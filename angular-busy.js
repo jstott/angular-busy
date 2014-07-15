@@ -9,7 +9,7 @@ angular.module('cgBusy').factory('_cgBusyTrackerFactory',['$timeout','$q',functi
 		tracker.promises = [];
 		tracker.delayPromise = null;
 		tracker.durationPromise = null;
-        tracker.delayJustFinished = false;
+		tracker.delayJustFinished = false;
 
 		tracker.reset = function(options){
 			tracker.minDuration = options.minDuration;
@@ -27,85 +27,85 @@ angular.module('cgBusy').factory('_cgBusyTrackerFactory',['$timeout','$q',functi
 				return;
 			}
 
-            tracker.delayJustFinished = false;
+			tracker.delayJustFinished = false;
 			if (options.delay) {
 				tracker.delayPromise = $timeout(function(){
 					tracker.delayPromise = null;
-                    tracker.delayJustFinished = true;
+					tracker.delayJustFinished = true;
 				},parseInt(options.delay,10));
 			}
-            if (options.minDuration) {
-                tracker.durationPromise = $timeout(function(){
-                    tracker.durationPromise = null;
-                },parseInt(options.minDuration,10) + (options.delay ? parseInt(options.delay,10) : 0));
-            }            
+			if (options.minDuration) {
+				tracker.durationPromise = $timeout(function(){
+					tracker.durationPromise = null;
+				},parseInt(options.minDuration,10) + (options.delay ? parseInt(options.delay,10) : 0));
+			}
 		};
 
 		tracker.getThen = function(promise){
 			var then = promise && (promise.then || promise.$then ||
-	        	(promise.$promise && promise.$promise.then));
+				(promise.$promise && promise.$promise.then));
 
-            if (promise.denodeify) {
-                return $q.when(promise).then;
-            }
+				if (promise.denodeify) {
+					return $q.when(promise).then;
+				}
 
-			return then;
-		};
+				return then;
+			};
 
-		var addPromiseLikeThing = function(promise){
-			var then = tracker.getThen(promise);
+			var addPromiseLikeThing = function(promise){
+				var then = tracker.getThen(promise);
 
-			if (!then) {
-				throw new Error('cgBusy expects a promise (or something that has a .promise or .$promise');
-			}
+				if (!then) {
+					throw new Error('cgBusy expects a promise (or something that has a .promise or .$promise');
+				}
 
-			if (tracker.promises.indexOf(promise) !== -1){
-				return;
-			}
-			tracker.promises.push(promise);
-
-			then(function(){
-				promise.$cgBusyFulfilled = true;
-				if (tracker.promises.indexOf(promise) === -1) {
+				if (tracker.promises.indexOf(promise) !== -1){
 					return;
 				}
-				tracker.promises.splice(tracker.promises.indexOf(promise),1);
-			},function(){
-				promise.$cgBusyFulfilled = true;
-				if (tracker.promises.indexOf(promise) === -1) {
-					return;
+				tracker.promises.push(promise);
+
+				then(function(){
+					promise.$cgBusyFulfilled = true;
+					if (tracker.promises.indexOf(promise) === -1) {
+						return;
+					}
+					tracker.promises.splice(tracker.promises.indexOf(promise),1);
+				},function(){
+					promise.$cgBusyFulfilled = true;
+					if (tracker.promises.indexOf(promise) === -1) {
+						return;
+					}
+					tracker.promises.splice(tracker.promises.indexOf(promise),1);
+				});
+			};
+
+			tracker.active = function(){
+				if (tracker.delayPromise){
+					return false;
 				}
-				tracker.promises.splice(tracker.promises.indexOf(promise),1);
-			});
+
+				if (!tracker.delayJustFinished){
+					if (tracker.durationPromise){
+						return true;
+					}
+					return tracker.promises.length > 0;
+				} else {
+					//if both delay and min duration are set,
+					//we don't want to initiate the min duration if the
+					//promise finished before the delay was complete
+					tracker.delayJustFinished = false;
+					return tracker.promises.length > 0;
+				}
+			};
+
+			return tracker;
+
 		};
+	}]);
 
-		tracker.active = function(){
-			if (tracker.delayPromise){
-				return false;
-			}
+	angular.module('cgBusy').value('cgBusyDefaults',{});
 
-            if (!tracker.delayJustFinished){
-                if (tracker.durationPromise){
-                    return true;
-                }
-                return tracker.promises.length > 0;
-            } else {
-                //if both delay and min duration are set, 
-                //we don't want to initiate the min duration if the 
-                //promise finished before the delay was complete
-                tracker.delayJustFinished = false;
-                return tracker.promises.length > 0;
-            }
-		};
-
-		return tracker;
-
-	};
-}]);
-
-angular.module('cgBusy').value('cgBusyDefaults',{});
-
-angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusyDefaults','$http','_cgBusyTrackerFactory',
+	angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusyDefaults','$http','_cgBusyTrackerFactory',
 	function($compile,$templateCache,cgBusyDefaults,$http,_cgBusyTrackerFactory){
 		return {
 			restrict: 'A',
@@ -118,7 +118,7 @@ angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusy
 				}
 
 				var templateElement;
-                var backdropElement;
+				var backdropElement;
 				var currentTemplate;
 				var templateScope;
 				var backdrop;
@@ -143,20 +143,24 @@ angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusy
 					if (angular.isString(options)) {
 						throw new Error('Invalid value for cg-busy.  cgBusy no longer accepts string ids to represent promises/trackers.');
 					}
-
-					//is it an array (of promises) or one promise
-					if (angular.isArray(options) || tracker.getThen(options)) {
-						options = {promise:options};
-					}
-
-					options = angular.extend(angular.copy(defaults),options);
-
 					if (!options.templateUrl){
 						options.templateUrl = defaults.templateUrl;
 					}
 
-					if (!angular.isArray(options.promise)){
-						options.promise = [options.promise];
+					if(options.promise && options.promise.createPromise){
+						tracker = options.promise;
+						options = angular.extend(angular.copy(defaults),options);
+					} else {
+						//is it an array (of promises) or one promise
+						if (angular.isArray(options) || tracker.getThen(options)) {
+							options = {promise:options};
+						}
+
+						options = angular.extend(angular.copy(defaults),options);
+
+						if (!angular.isArray(options.promise)){
+							options.promise = [options.promise];
+						}
 					}
 
 					// options.promise = angular.isArray(options.promise) ? options.promise : [options.promise];
@@ -171,7 +175,7 @@ angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusy
 
 					templateScope.$message = options.message;
 
-					if (!angular.equals(tracker.promises,options.promise)) {
+					if (!options.promise.createPromise && !angular.equals(tracker.promises,options.promise)) {
 						tracker.reset({
 							promises:options.promise,
 							delay:options.delay,
@@ -189,9 +193,9 @@ angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusy
 						if (templateElement) {
 							templateElement.remove();
 						}
-                        if (backdropElement){
-                            backdropElement.remove();
-                        }
+						if (backdropElement){
+							backdropElement.remove();
+						}
 
 						currentTemplate = options.templateUrl;
 						backdrop = options.backdrop;
@@ -200,21 +204,21 @@ angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusy
 
 							options.backdrop = typeof options.backdrop === 'undefined' ? true : options.backdrop;
 
-                            if (options.backdrop){
-                                var backdrop = '<div class="cg-busy cg-busy-backdrop cg-busy-backdrop-animation ng-hide" ng-show="$cgBusyIsActive()"></div>';
-                                backdropElement = $compile(backdrop)(templateScope);
-                                element.append(backdropElement);
-                            }
+							if (options.backdrop){
+								var backdrop = '<div class="cg-busy cg-busy-backdrop cg-busy-backdrop-animation ng-hide" ng-show="$cgBusyIsActive()"></div>';
+								backdropElement = $compile(backdrop)(templateScope);
+								element.append(backdropElement);
+							}
 
 							var template = '<div class="cg-busy cg-busy-animation ng-hide" ng-show="$cgBusyIsActive()">' + indicatorTemplate + '</div>';
 							templateElement = $compile(template)(templateScope);
 
 							angular.element(templateElement.children()[0])
-								.css('position','absolute')
-								.css('top',0)
-								.css('left',0)
-								.css('right',0)
-								.css('bottom',0);
+							.css('position','absolute')
+							.css('top',0)
+							.css('left',0)
+							.css('right',0)
+							.css('bottom',0);
 							element.append(templateElement);
 
 						}).error(function(data){
@@ -227,4 +231,3 @@ angular.module('cgBusy').directive('cgBusy',['$compile','$templateCache','cgBusy
 		};
 	}
 	]);
-

@@ -81,7 +81,7 @@
 
         <div class="col-md-offset-1 col-md-7" style="padding-top:28px">
 
-          <div cg-busy="{promise:promise,templateUrl:templateUrl,message:message,backdrop:backdrop,delay:delay,minDuration:minDuration}">
+          <div cg-busy="{promise:tracker,templateUrl:templateUrl,message:message,backdrop:backdrop,delay:delay,minDuration:minDuration}">
             <table class="table table-bordered">
               <thead>
                 <tr>
@@ -129,6 +129,7 @@
   <script src="../bower_components/angular/angular.js"></script>
   <script src="../bower_components/angular-animate/angular-animate.js"></script>
   <script src="../dist/angular-busy.js"></script>
+  <script src="../bower_components/angular-promise-tracker/promise-tracker.js"></script>
   <script src="demo.js"></script>
 
 </body>
